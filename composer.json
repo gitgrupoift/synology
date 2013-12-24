@@ -1,0 +1,23 @@
+{
+    "name": "patbzh/synology",
+    "type": "symfony-bundle",
+    "description": "Symfony SynologyBundle",
+    "keywords": ["synology"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Patrick Coustans",
+            "email": "patrick.coustans@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.2",
+        "symfony/framework-bundle": ">=2.3",
+        "sensio/buzz-bundle":"*",
+        "olegstepura/sensio-buzz-profiler-bundle": "*"
+    },
+    "autoload": {
+        "psr-0": { "Patbzh\\SynologyBundle\\": "" }
+    },
+    "minimum-stability": "dev"
+}
