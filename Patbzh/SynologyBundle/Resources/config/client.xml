@@ -5,11 +5,11 @@
     xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
 
     <parameters>
-        <parameter key="patbzh.client.class">Patbzh\SynologyBundle\Model\Client</parameter>
+        <parameter key="patbzh.synology.client.class">Patbzh\SynologyBundle\Model\Client</parameter>
     </parameters>
 
     <services>
-        <service id="patbzh.client" class="%patbzh.client.class%">
+        <service id="patbzh.synology.client" class="%patbzh.synology.client.class%">
             <call method="setHttpClient">
 		<argument type="service" id="buzz.client" />
             </call>
