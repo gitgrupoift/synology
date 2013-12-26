@@ -25,6 +25,10 @@ class PatbzhSynologyExtension extends Extension
 
         $container->setParameter('patbzh.synology.http_client_timeout', $config['http_client_timeout']);
         $container->setParameter('patbzh.synology.base_url', $config['base_url']);
+        $container->setParameter('patbzh.synology.user', $config['user']);
+        $container->setParameter('patbzh.synology.password', $config['password']);
+        $container->setParameter('patbzh.synology.session_name', $config['session_name']);
+        $container->setParameter('patbzh.synology.validate_queries', $config['validate_queries']);
     }
 }
 

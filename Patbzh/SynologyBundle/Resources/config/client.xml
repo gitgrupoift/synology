@@ -16,6 +16,18 @@
             <call method="setBaseUrl">
                 <argument>%patbzh.synology.base_url%</argument>
             </call>
+            <call method="setUser">
+                <argument>%patbzh.synology.user%</argument>
+            </call>
+            <call method="setPassword">
+                <argument>%patbzh.synology.password%</argument>
+            </call>
+            <call method="setSessionName">
+                <argument>%patbzh.synology.session_name%</argument>
+            </call>
+            <call method="setIsQueriesValidated">
+                <argument>%patbzh.synology.validate_queries%</argument>
+            </call>
         </service>
     </services>
 </container>
