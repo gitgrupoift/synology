@@ -2,6 +2,8 @@
 namespace Patbzh\SynologyBundle\Model;
 
 use Buzz\Message\Request;
+use Buzz\Message\Form\FormRequest;
+use Buzz\Message\Form\FormUpload;
 use Buzz\Message\Response;
 use Patbzh\SynologyBundle\Exception\PatbzhSynologyException;
 
@@ -146,8 +148,18 @@ class Client
             case 420 : return "Illegal file name on FAT file system";
             case 421 : return "Device or resource busy";
             case 599 : return "No such task of the file operation";
+            case 1100: return "Failed to create a folder. More information in <errors> object.";
+            case 1101: return "The number of folders to the parent folder would exceed the system limitation.";
+            // File upload
+            case 1800: return "There is no Content-Length information in the HTTP header or the received size doesn’t match the value of Content-Length information in the HTTP header.";
+            case 1801: return "Wait too long, no date can be received from client (Default maximum wait time is 3600 seconds).";
+            case 1802: return "No filename information in the last part of file content.";
+            case 1803: return "Upload connection is cancelled.";
+            case 1804: return "Failed to upload too big file to FAT file system.";
+            case 1805: return "Can’t overwrite or skip the existed file, if no overwrite parameter is given.";
+
         }
-        return 'Unknown error code';
+        return 'Unknown error code ('.$code.')';
     }
 
     /**
@@ -162,7 +174,7 @@ class Client
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      */
     protected function request($cgiPath, $apiName, $version, $method, $additionalParams=null, $isLoginRequired=true) {
         // Check Available APIS
@@ -224,7 +236,7 @@ class Client
     /**
      * Create a synology "sid"
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      */
     public function login() {
         $params['account'] = $this->getUser();
@@ -238,11 +250,21 @@ class Client
     }
 
     /**
+     * Stop synology session
+     *
+     * @throws PatbzhSynologyException In case synology api sends an error response
+     */
+    public function logout() {
+        $response = $this->request('auth.cgi', 'SYNO.API.Auth', 2, 'logout');
+        return $response;
+    }
+
+    /**
      * Retrieve available synology apis
      *
      * @param string $filter (Optionnal - Default all) Appi list to filter
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      * @throws \\InvalidArgumentException
      */
     public function retrieveAvailableApis($filter='all') {
@@ -273,7 +295,7 @@ class Client
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      * @throws \\InvalidArgumentException
      */
     public function getDownloadList($offset=null, $limit=null, $additional=null) {
@@ -303,7 +325,7 @@ class Client
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      * @throws \\InvalidArgumentException
      */
     public function getDownloadInfo($id, $additional=null) {
@@ -328,7 +350,7 @@ class Client
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      */
     public function getDownloadStationInfo() {
         return $this->request('DownloadStation/info.cgi', 'SYNO.DownloadStation.Info', 1, 'getinfo', null);
@@ -339,7 +361,7 @@ class Client
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      */
     public function getDownloadStationConfig() {
         return $this->request('DownloadStation/info.cgi', 'SYNO.DownloadStation.Info', 1, 'getconfig', null);
@@ -352,7 +374,7 @@ class Client
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      */
     public function setDownloadStationConfig($parameters) {
         return $this->request('DownloadStation/info.cgi', 'SYNO.DownloadStation.Info', 1, 'setserverconfig', $parameters);
@@ -368,7 +390,7 @@ class Client
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      */
     public function searchDownload($text, $filter=null, $minSize=0, $maxSize=1073741824) {
         if(!is_string($text)) throw new \InvalidArgumentException('$text should be a string');
@@ -415,7 +437,7 @@ class Client
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      * @throws \\InvalidArgumentException
      */
     public function addDownloadTask($uri) {
@@ -435,7 +457,7 @@ class Client
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      * @throws \\InvalidArgumentException
      */
     public function removeTasks($id, $forceComplete=false) {
@@ -455,7 +477,7 @@ class Client
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      */
     public function removeFinishedTasks() {
         $list = $this->getDownloadList();
@@ -474,33 +496,382 @@ class Client
     **********************/ 
 
     /**
-     * List current download tasks
-     *
-     * @param integer $offset (Optionnal - Default 0) Beginning task on the requested record 
-     * @param integer $limit (Optionnal - Default -1) Number of records requested: “-1” means to list all tasks
-     * @param array $additional (Optionnal) Additionnal information in detail|transfer|file|tracker|peer
+     * Get information on File API
      *
      * @return array Response of the request ("json_decoded")
      *
-     * @throws PatbzhBetaseriesException In case betaseries api sends an error response
+     * @throws PatbzhSynologyException In case synology api sends an error response
      * @throws \\InvalidArgumentException
      */
-    public function getDownloadList($offset=null, $limit=null, $additional=null) {
+    public function getFileApiInfo() {
+        return $this->request('FileStation/info.cgi', 'SYNO.FileStation.Info', 1, 'getinfo');
+    }
+
+    /**
+     * Get shared folders
+     *
+     * @param integer $offset (Optionnal - Default 0) Number of skipped folders
+     * @param integer $limit (Optionnal - Default 0) Number of shared folders
+     * @param array $sortBy (Optionnal) Sort by name|user|group|mtime|atime|ctime|crtime|posix
+     * @param string $sortOrder (Optionnal - Default asc) Sort order asc|desc
+     * @param string $onlyWritable (Optionnal - Default false) true = Only writable | false = Writable & readable
+     * @param array $additional (Optionnal) Additionnal information in real_path|size|owner|time|perm|mount_point_type|volume_status
+     *
+     * @return array Response of the request ("json_decoded")
+     *
+     * @throws PatbzhSynologyException In case synology api sends an error response
+     * @throws \\InvalidArgumentException
+     */
+    public function getSharedFolders($offset=null, $limit=null, $sortBy=null, $sortOrder=null, $onlyWritable=null, $additional=null) {
         if(!is_null($offset) && !is_integer($offset)) throw new \InvalidArgumentException('$offset should be an integer');
         if(!is_null($limit) && !is_integer($limit)) throw new \InvalidArgumentException('$offset should be an integer');
+        if(!is_null($onlyWritable) && !is_bool($onlyWritable)) throw new \InvalidArgumentException('$onlyWritable should be a boolean');
+        if(!is_null($sortOrder) && !in_array($sortOrder, array('asc','desc'))) throw new \InvalidArgumentException('$sortOrder parameter should be one of this value asc|desc');
+        if(!is_null($sortBy) && !is_array($sortBy)) throw new \InvalidArgumentException('$sortBy should be an array');
+
         if(!is_null($additional) && !is_array($additional)) throw new \InvalidArgumentException('$additional should be an array');
 
+        if(!is_null($sortBy)) {
+            foreach($sortBy as $value) {
+                if(!is_string($value) && !in_array($sortBy, array('name','user','group','mtime','atime','ctime','crtime','posix'))) throw new \InvalidArgumentException('$sortBy parameter should contain this value name|user|group|mtime|atime|ctime|crtime|posix');
+            }
+        }
         if(!is_null($additional)) {
             foreach($additional as $value) {
-                if(!is_string($value) && !in_array($value, array('detail','transfer','file','tracker','peer'))) throw new \InvalidArgumentException('$additional parameter should be one of this value detail|transfer|file|tracker|peer');
+                if(!is_string($value) && !in_array($value, array('real_path','size','owner','time','perm','mount_point_type','volume_status'))) throw new \InvalidArgumentException('$additional parameter should contain this value real_path|size|owner|time|perm|mount_point_type|volume_status');
             }
-	}
+        }
 
         $params = array();
         if(isset($offset)) $params['offset'] = $offset;
         if(isset($limit)) $params['limit'] = $limit;
+        if(isset($sortOrder)) $params['sort_order'] = $sortOrder;
+        if(isset($onlyWritable) && $onlyWritable) $params['onlywritable'] = 'true';
+        if(isset($onlyWritable) && !$onlyWritable) $params['onlywritable'] = 'false';
+
+        if(isset($sortBy)) $params['sort_by'] = implode(',',$sortBy);
         if(isset($additional)) $params['additional'] = implode(',',$additional);
-        
-        return $this->request('DownloadStation/task.cgi', 'SYNO.DownloadStation.Task', 1, 'list', $params);
+
+        return $this->request('FileStation/file_share.cgi', 'SYNO.FileStation.List', 1, 'list_share', $params);
+    }
+
+    /**
+     * Get folder content
+     *
+     * @param string $path Path to list
+     * @param integer $offset (Optionnal - Default 0) Number of skipped folders
+     * @param integer $limit (Optionnal - Default 0) Number of shared folders
+     * @param array $sortBy (Optionnal) Sort by name|user|group|mtime|atime|ctime|crtime|posix
+     * @param string $sortOrder (Optionnal - Default asc) Sort order asc|desc
+     * @param string $pattern (Optionnal) Pattern filter
+     * @param string $filetype (Optionnal - Default all) Entry type dir|file|all
+     * @param string $gotoPath (Optionnal) Max sub folder level to return
+     * @param array $additional (Optionnal) Additionnal information in real_path|size|owner|time|perm|mount_point_type|type
+     *
+     * @return array Response of the request ("json_decoded")
+     *
+     * @throws PatbzhSynologyException In case synology api sends an error response
+     * @throws \\InvalidArgumentException
+     */
+    public function getFolderContent($path, $offset=null, $limit=null, $sortBy=null, $sortOrder=null, $pattern=null, $filetype=null, $gotoPath=null, $additional=null) {
+        if(!is_string($path)) throw new \InvalidArgumentException('$path should be a string');
+        if(!is_null($pattern) && !is_string($pattern)) throw new \InvalidArgumentException('$pattern should be a string');
+        if(!is_null($filetype) && !is_string($filetype) && !in_array($filetype, array('file','dir','all'))) throw new \InvalidArgumentException('$filetype should be one of this value file|dir|all');
+        if(!is_null($gotoPath) && !is_string($gotoPath)) throw new \InvalidArgumentException('$gotoPath should be a string');
+        if(!is_null($offset) && !is_integer($offset)) throw new \InvalidArgumentException('$offset should be an integer');
+        if(!is_null($limit) && !is_integer($limit)) throw new \InvalidArgumentException('$offset should be an integer');
+        if(!is_null($sortOrder) && !in_array($sortOrder, array('asc','desc'))) throw new \InvalidArgumentException('$sortOrder parameter should be one of this value asc|desc');
+        if(!is_null($sortBy) && !is_array($sortBy)) throw new \InvalidArgumentException('$sortBy should be an array');
+
+        if(!is_null($additional) && !is_array($additional)) throw new \InvalidArgumentException('$additional should be an array');
+
+        if(!is_null($sortBy)) {
+            foreach($sortBy as $value) {
+                if(!is_string($value) && !in_array($sortBy, array('name','user','group','mtime','atime','ctime','crtime','posix'))) throw new \InvalidArgumentException('$sortBy parameter should contain this value name|user|group|mtime|atime|ctime|crtime|posix');
+            }
+        }
+        if(!is_null($additional)) {
+            foreach($additional as $value) {
+                if(!is_string($value) && !in_array($value, array('real_path','size','owner','time','perm','mount_point_type','type'))) throw new \InvalidArgumentException('$additional parameter should contain this value real_path|size|owner|time|perm|mount_point_type|type');
+            }
+        }
+
+        $params = array();
+        $params['folder_path'] = $path;
+        if(isset($offset)) $params['offset'] = $offset;
+        if(isset($limit)) $params['limit'] = $limit;
+        if(isset($pattern)) $params['pattern'] = $pattern;
+        if(isset($filetype)) $params['filetype'] = $filetype;
+        if(isset($gotoPath)) $params['goto_path'] = $gotoPath;
+        if(isset($sortOrder)) $params['sort_order'] = $sortOrder;
+        if(isset($sortBy)) $params['sort_by'] = implode(',',$sortBy);
+        if(isset($additional)) $params['additional'] = implode(',',$additional);
+
+        return $this->request('FileStation/file_share.cgi', 'SYNO.FileStation.List', 1, 'list', $params);
+    }
+
+    /**
+     * Get file info
+     *
+     * @param string $path Path to list
+     * @param array $additional (Optionnal) Additionnal information in real_path|size|owner|time|perm|mount_point_type|type
+     *
+     * @return array Response of the request ("json_decoded")
+     *
+     * @throws PatbzhSynologyException In case synology api sends an error response
+     * @throws \\InvalidArgumentException
+     */
+    public function getFileInfo($path, $additional=null) {
+        if(!is_string($path)) throw new \InvalidArgumentException('$path should be a string');
+        if(!is_null($additional)) {
+            foreach($additional as $value) {
+                if(!is_string($value) && !in_array($value, array('real_path','size','owner','time','perm','mount_point_type','type'))) throw new \InvalidArgumentException('$additional parameter should contain this value real_path|size|owner|time|perm|mount_point_type|type');
+            }
+        }
+    
+        $params = array();
+        $params['path'] = $path;
+        if(isset($additional)) $params['additional'] = implode(',',$additional);
+
+        return $this->request('FileStation/file_share.cgi', 'SYNO.FileStation.List', 1, 'getinfo', $params);
+    }
+
+    /**
+     * Upload file- Not working!!!! - 408 error code...
+     *
+     * IMPROVE....
+     *
+     * @param string $destFolderPath Target folder of the file
+     * @param boolean $createParents Create parents folder if not exist
+     * @param string $filePath Local file to upload
+     * @param boolean $overwrite (Optionnal - Default null) null : Set error if file exists, true : overwrite file, false : skip upload if file exist
+     * @param \DateTime $mtime (Optionnal) Set the modification time
+     * @param \DateTime $crtime (Optionnal) Set the creation time
+     * @param \DateTime $atime (Optionnal) Set the access time
+     *
+     * @return array Response of the request ("json_decoded")
+     *
+     * @throws PatbzhSynologyException In case synology api sends an error response
+     * @throws \\InvalidArgumentException
+     */
+    public function uploadFile($destFolderPath, $createParents, $filePath, $overwrite=null, $mtime=null, $crtime=null, $atime=null) {
+	if(!is_string($destFolderPath)) throw new \InvalidArgumentException('$destFolderPath should be a string');
+	if(!is_string($filePath)) throw new \InvalidArgumentException('$filePath should be a string');
+        if(!is_bool($createParents)) throw new \InvalidArgumentException('$createParents should be a boolean');
+        if(!is_null($overwrite) && !is_bool($overwrite)) throw new \InvalidArgumentException('$overwrite should be a boolean');
+        if(!is_null($mtime) && !($mtime instanceof \DateTime)) throw new \InvalidArgumentException('$mtime should be a \DateTime');
+        if(!is_null($crtime) && !($crtime instanceof \DateTime)) throw new \InvalidArgumentException('$crtime should be a \DateTime');
+        if(!is_null($atime) && !($atime instanceof \DateTime)) throw new \InvalidArgumentException('$atime should be a \DateTime');
+
+
+        $additionalParams['dest_folder_path'] = $destFolderPath;
+        if($createParents) $additionalParams['create_parents'] = 'true';
+        if(!$createParents) $additionalParams['create_parents'] = 'false';
+        if(!is_null($overwrite) && $createParents) $additionalParams['overwrite'] = 'true';
+        if(!is_null($overwrite) && !$createParents) $additionalParams['overwrite'] = 'false';
+        if(!is_null($mtime)) $additionalParams['mtime'] = $mtime->getTimestamp();
+        if(!is_null($crtime)) $additionalParams['crtime'] = $crtime->getTimestamp();
+        if(!is_null($atime)) $additionalParams['atime'] = $atime->getTimestamp();
+//        $additionalParams['file'] = $file;
+
+        $cgiPath = 'FileStation/api_upload.cgi';
+        $apiName = 'SYNO.FileStation.Upload';
+        $version=1;
+        // Check Available APIS
+        if($this->getIsQueriesValidated() && !in_array($apiName, array('SYNO.API.Auth','SYNO.API.Info')) && !isset($this->availableApis[$apiName])) {
+            $this->retrieveAvailableApis($apiName);
+
+            // Validate API information
+            $calledApiInformation = $this->availableApis[$apiName];
+            if(is_null($calledApiInformation)) throw new \RuntimeException('Unavailable API');
+            if($cgiPath != $calledApiInformation['ApiPath']) throw new \RuntimeException('CGI Path problem [Requested: '.$cgiPath.'][ServerVersion: '.$calledApiInformation['ApiPath'].']');
+            if($calledApiInformation['MinVersion']>$version) throw new \RuntimeException('API Version issue [Requested: '.$version.'][MinVersion: '.$calledApiInformation['MinVersion'].']');
+            if($calledApiInformation['MaxVersion']<$version) throw new \RuntimeException('API Version issue [Requested: '.$version.'][MaxVersion: '.$calledApiInformation['MaxVersion'].']');
+        }
+
+        // Login if required
+        if(!$this->isLoggedIn()) $this->login();
+ 
+        // Set "mandatory" parameters list
+        $params = array(
+            'api'=>$apiName,
+            'version'=>$version,
+            'method'=>'upload',
+            );
+        if($this->isLoggedIn()) $params['_sid'] = $this->getSessionId();
+
+        // Add additionnal parameters
+        if($additionalParams !== null) {
+            $params = $params + $additionalParams;
+        }
+
+        // Set request
+        $queryString = 'webapi/'.$cgiPath;
+        $request = new FormRequest('POST', $queryString, $this->getBaseUrl());
+        $request->addFields($params);
+        $uploadedFile = new FormUpload($filePath);
+        $uploadedFile->setContentType('application/octet-stream');
+        $request->setField('file', $uploadedFile);
+        $response = new Response();
+
+        // Handle request
+        $this->httpClient->send($request, $response);
+
+        // Check response
+        $parsedResponse = json_decode($response->getContent(), true);
+        // Throw exception in case of error
+        if($parsedResponse['success'] !== true) {
+            throw new PatbzhSynologyException($this->getErrorMessage($parsedResponse['error']['code']).' ('.$parsedResponse['error']['code'].')', $parsedResponse['error']['code']);
+        }
+
+        // Return json_decoded response
+        return $parsedResponse;
+    }
+
+    /**
+     * Upload file using FTP - Same host default port
+     *
+     * @param string $destFolderPath Target folder of the file
+     * @param string $filePath Local file to upload
+     *
+     * @return boolean Upload success
+     *
+     * @throws PatbzhSynologyException In case synology api sends an error response
+     * @throws \\InvalidArgumentException
+     */
+    public function uploadFileUsingFtp($destFolderPath, $filePath) {
+	if(!is_string($destFolderPath)) throw new \InvalidArgumentException('$destFolderPath should be a string');
+	if(!is_string($filePath)) throw new \InvalidArgumentException('$filePath should be a string');
+
+        $url_array = parse_url($this->getBaseUrl());
+        // Mise en place d'une connexion basique
+        $conn_id = ftp_connect($url_array['host']);
+
+        // Identification avec un nom d'utilisateur et un mot de passe
+        $login_result = ftp_login($conn_id, $this->getUser(), $this->getPassword());
+
+        // Charge un fichier
+        $file_result = ftp_put($conn_id, $destFolderPath.'/'.basename($filePath), $filePath, FTP_ASCII);
+
+        // Fermeture de la connexion
+        ftp_close($conn_id);
+
+        return $file_result;
+    }
+
+    /**
+     * Download file - Not working (Not a json response :/)
+     *
+     * @param string $path Path to download
+     * @param string $mode (Optionnal - default download) Download system in open|download
+     *
+     * @return array Response of the request ("json_decoded")
+     *
+     * @throws PatbzhSynologyException In case synology api sends an error response
+     * @throws \\InvalidArgumentException
+     */
+    public function downloadFile($path, $mode='download') {
+        if(!is_string($path)) throw new \InvalidArgumentException('$path should be a string');
+	if(!is_string($mode) && !in_array($mode, array('open','download'))) throw new \InvalidArgumentException('$mode parameter should contain this value open|download');
+    
+        $params = array();
+        $params['path'] = $path;
+        $params['mode'] = $mode;
+
+        return $this->request('FileStation/file_download.cgi', 'SYNO.FileStation.Download', 1, 'download', $params);
+    }
+
+    /**
+     * Create a folder
+     *
+     * @param string $name Folder name to create
+     * @param string $path Path to create folder in
+     * @param boolean $forceParent (Optionnal - default false) Create parents folder if not exist
+     * @param array $additional (Optionnal) Additionnal information in real_path|size|owner|time|perm|type
+     *
+     * @return array Response of the request ("json_decoded")
+     *
+     * @throws PatbzhSynologyException In case synology api sends an error response
+     * @throws \\InvalidArgumentException
+     */
+    public function createFolder($name, $path, $forceParent=null, $additional=null) {
+        if(!is_string($name)) throw new \InvalidArgumentException('$name should be a string');
+        if(!is_string($path)) throw new \InvalidArgumentException('$path should be a string');
+        if(!is_null($forceParent) && !is_bool($forceParent)) throw new \InvalidArgumentException('$forceParent should be a boolean');
+
+        if(!is_null($additional)) {
+            foreach($additional as $value) {
+                if(!is_string($value) && !in_array($value, array('real_path','size','owner','time','perm','type'))) throw new \InvalidArgumentException('$additional parameter should contain this value real_path|size|owner|time|perm|type');
+            }
+        }
+
+        $params = array();
+        $params['name'] = $name;
+        $params['folder_path'] = $path;
+        if($forceParent) $additionalParams['force_parent'] = 'true';
+        if(!$forceParent) $additionalParams['force_parent'] = 'false';
+        if(isset($additional)) $params['additional'] = implode(',',$additional);
+
+        return $this->request('FileStation/file_crtfdr.cgi', 'SYNO.FileStation.CreateFolder', 1, 'create', $params);
+    }
+
+    /**
+     * Rename folder
+     *
+     * @param string $name Folder name to create
+     * @param string $path Path to create folder in
+     * @param array $additional (Optionnal) Additionnal information in real_path|size|owner|time|perm|type
+     *
+     * @return array Response of the request ("json_decoded")
+     *
+     * @throws PatbzhSynologyException In case synology api sends an error response
+     * @throws \\InvalidArgumentException
+     */
+    public function renameFolder($name, $path, $additional=null) {
+        if(!is_string($name)) throw new \InvalidArgumentException('$name should be a string');
+        if(!is_string($path)) throw new \InvalidArgumentException('$path should be a string');
+
+        if(!is_null($additional)) {
+            foreach($additional as $value) {
+                if(!is_string($value) && !in_array($value, array('real_path','size','owner','time','perm','type'))) throw new \InvalidArgumentException('$additional parameter should contain this value real_path|size|owner|time|perm|type');
+            }
+        }
+
+        $params = array();
+        $params['name'] = $name;
+        $params['path'] = $path;
+        if(isset($additional)) $params['additional'] = implode(',',$additional);
+
+        return $this->request('FileStation/file_rename.cgi', 'SYNO.FileStation.Rename', 1, 'rename', $params);
+    }
+
+    /**
+     * Rename folder
+     *
+     * @param string $srcPath Source folder
+     * @param string $destPath Destination folder
+     * @param boolean $move (Optionnal - default false) Case null/false : copy, true : move
+     * @param boolean $overwrite (Optionnal) Case null : error code, true : overwrite, false : skipped if exists
+     *
+     * @return array Response of the request ("json_decoded")
+     *
+     * @throws PatbzhSynologyException In case synology api sends an error response
+     * @throws \\InvalidArgumentException
+     */
+    public function copyOrMoveFile($srcPath, $destPath, $move=null, $overwrite=null) {
+        if(!is_string($srcPath)) throw new \InvalidArgumentException('$srcPath should be a string');
+        if(!is_string($destPath)) throw new \InvalidArgumentException('$destPath should be a string');
+        if(!is_null($overwrite) && !is_bool($overwrite)) throw new \InvalidArgumentException('$overwrite should be a boolean');
+        if(!is_null($move) && !is_bool($move)) throw new \InvalidArgumentException('$move should be a boolean');
+
+        $params = array();
+        $params['path'] = $srcPath;
+        $params['dest_folder_path'] = $destPath;
+        if($move) $params['remove_src'] = 'true';
+        if(!$move) $params['remove_src'] = 'false';
+        if($overwrite) $params['overwrite'] = 'true';
+        if(!$overwrite) $params['overwrite'] = 'false';
+
+        return $this->request('FileStation/file_MVCP.cgi', 'SYNO.FileStation.CopyMove', 1, 'start', $params);
     }
 }
